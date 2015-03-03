@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
       dup2(clsck,1);
       dup2(clsck,2);
       close(clsck);
-      execl("/root/echoserver/tcph","tcph",NULL);
+      execl("./tcph","tcph",NULL);
     } else if (pid>0) { // parent process
       close(clsck);
       printf("A connection from %s is opened!\n",inet_ntoa(claddr.sin_addr));
