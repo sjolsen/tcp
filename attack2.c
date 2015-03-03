@@ -39,7 +39,6 @@ int failed (status_t s)
 }
 
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -60,6 +59,7 @@ status_t connect_tcp (int (*the_socket),
 
 	// Prepare IPv4 address given by address:port
 	struct sockaddr_in svaddr = (struct sockaddr_in) {.sin_family = AF_INET};
+
 	switch (inet_pton (AF_INET, address, &svaddr.sin_addr)) {
 		case 1:  break;
 		case 0:  return failure ("Invalid network address");
@@ -80,6 +80,9 @@ status_t connect_tcp (int (*the_socket),
 	(*the_socket) = _the_socket;
 	return success ();
 }
+
+
+#include <stdio.h>
 
 int main (int argc, char** argv)
 {
