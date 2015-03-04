@@ -180,15 +180,34 @@ status_t dump_exploit (const char* data, size_t size, const char* filename)
 
 status_t talk_to_server (int echo_socket)
 {
-	char buf [256];
+	status_t status = success ();
+	char buffer [256];
+
 	while (true) {
-		int len = read (STDIN_FILENO, buf, 256);
-		send (echo_socket, buf, len, 0);
-		while ((len = recv (echo_socket, buf, 256, MSG_DONTWAIT)) > 0)
-			write (STDOUT_FILENO, buf, len);
-		if (strncmp (buf, "exit\n", 5)==0)
-			return;
+		// Get user input
+		ssize_t input_size = read (STDIN_FILENO, buffer, 256);
+		if (input_size == -1)
+			return efailure (errno);
+
+		// Check for exit
+		if (strncmp (buffer, "exit\n", 5) == 0)
+			break;
+
+		// Send it to the server
+		status = complete_write (echo_socket, buffer, input_size);
+		if (failed (status))
+			return status;
+
+		// Output server response
+		ssize_t output_size = -1;
+		while ((output_size = recv (echo_socket, buffer, 256, MSG_DONTWAIT)) > 0) {
+			status = complete_write (STDOUT_FILENO, buffer, output_size);
+			if (failed (status))
+				return status;
+		}
 	}
+
+	return success ();
 }
 
 
