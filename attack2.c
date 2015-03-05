@@ -176,37 +176,66 @@ status_t dump_exploit (const char* data, size_t size, const char* filename)
 }
 
 
+#include <sys/wait.h>
 
-status_t talk_to_server (int echo_socket)
+status_t copy_until_eof (int src, int dst)
 {
-	status_t status = success ();
 	char buffer [256];
 
 	while (true) {
 		// Get user input
-		ssize_t input_size = read (STDIN_FILENO, buffer, 256);
-		if (input_size == -1)
-			return efailure (errno);
-
-		// Check for exit
-		if (strncmp (buffer, "exit\n", 5) == 0)
-			break;
+		ssize_t input_size = read (src, buffer, 256);
+		switch (input_size) {
+			case 0:
+				return success ();
+			case -1:
+				switch (errno) {
+					case EAGAIN:
+						continue;
+					default:
+						return efailure (errno);
+				}
+			default:
+				break;
+		}
 
 		// Send it to the server
-		status = complete_write (echo_socket, buffer, input_size);
+		status_t status = complete_write (dst, buffer, input_size);
 		if (failed (status))
 			return status;
+	}
+}
 
-		// Output server response
-		ssize_t output_size = -1;
-		while ((output_size = recv (echo_socket, buffer, 256, MSG_DONTWAIT)) > 0) {
-			status = complete_write (STDOUT_FILENO, buffer, output_size);
+status_t talk_to_server (int echo_socket)
+{
+	pid_t recv_pid = fork ();
+	switch (recv_pid) {
+		case -1:
+			return efailure (errno);
+		case 0: {
+			status_t status = copy_until_eof (echo_socket, STDOUT_FILENO);
+			close (echo_socket);
 			if (failed (status))
+				exit (EXIT_FAILURE);
+			exit (EXIT_SUCCESS);
+		}
+		default: {
+			status_t status = copy_until_eof (STDIN_FILENO, echo_socket);
+			close (echo_socket);
+			if (failed (status)) {
+				waitpid (recv_pid, NULL, 0);
 				return status;
+			}
+
+			int retval;
+			if (waitpid (recv_pid, &retval, 0) == -1)
+				return efailure (errno);
+			if (WEXITSTATUS (retval) != 0)
+				return failure ("Something happend in the receiver process");
+
+			return success ();
 		}
 	}
-
-	return success ();
 }
 
 
